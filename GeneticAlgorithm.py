@@ -1,5 +1,6 @@
 import random
 import operator
+import time
 
 '''
 POPULATION, total of 20 invidivuals
@@ -41,6 +42,8 @@ population = [
     [135, 865, 11, 112, 1041, 836],
     [17, 983, 153, 333, 159, 1355],
 ]
+
+
 
 '''
 FUNCTIONS AND RESTRICTIONS
@@ -222,17 +225,19 @@ def init():
     bestValue = fmin(bestAllTime)
     bestCountValidations = countValidRestrictions(bestAllTime)
 
-    for gen in range(0, 20000):
-        print("Running generation:", gen)
+    for gen in range(0, 1000000):
+        # print("Running generation:", gen)
         population = getPopulationForNewGeneration(population)
         orderAscMaxValidRestrictionsAndDescMinValue(population)
         
         bestGeneration = population[0]
         minValue = fmin(bestGeneration)
         counValidations = countValidRestrictions(bestGeneration)
-        print("Best result for current gen", bestGeneration, minValue, counValidations , "\n")
+        # print("Best result for current gen", bestGeneration, minValue, counValidations , "\n")
 
-        if (bestCountValidations <= counValidations and bestValue >= minValue):
+        if (bestCountValidations < counValidations 
+            or (bestCountValidations == counValidations and bestValue >= minValue)):
+
             bestCountValidations = counValidations
             bestValue = minValue
             bestAllTime = bestGeneration
@@ -240,8 +245,7 @@ def init():
 
     # End for
 # End init
-
-
-
+start = time.time()
 init()
 print("BEST OF ALL generarions for current gen", bestAllTime, bestValue, bestCountValidations, "\n")
+print('Finished in: ' + str(time.time() - start) + ' sec')
