@@ -89,16 +89,62 @@ GENETIC ALGORITHM
 minValue = 0
 
 
-def orderByMaxValidRestrictionsAndMinValue(population):
-    population = []
-    population.sort(lambda o1,o2 : abs((a - e) / a))
-
+def orderAscMaxValidRestrictionsAndDescMinValue(population):
+    sortCriteria = lambda idv:(countValidRestrictions(idv), -fmin(idv))
+    population.sort(key = sortCriteria, reverse = True)
 # End orderByMinValueAndMaxValidRestrictions
 
+
+CROSSOVER_THRESHOLD = 0.7
+SAMPLE_SIZE = 10 # This must be pair
+def crossoverPopulation(population):
+    newPop = []
+
+    sample = population[0:SAMPLE_SIZE]
+    
+    for i in range(0, SAMPLE_SIZE // 2):
+        kids = crossoverIndividuals(sample[i*2], sample[(i+1)*2 - 1])
+
+        if len(kids) > 0: # Proceed with mutation
+            print(kids)
+        # End if
+
+    # End for
+
+    return newPop + population[SAMPLE_SIZE:]
+# End crossoverPopulation
+
+def crossoverIndividuals(dad, mom):
+
+    lenIdv = len(dad)
+    idx = 1
+    while idx < lenIdv:
+        if (random.random() >= CROSSOVER_THRESHOLD): break
+        idx += 1
+    # End while
+
+    newIdvs = []
+    if (idx < lenIdv): # crossover happens
+        first = dad[0:idx] + mom[idx:]
+        second = mom[0:idx] + dad[idx:]
+        newIdvs = [first, second]
+    # End if
+    
+    return newIdvs
+# End crossoverIndividuals
+
 def init():
-    global minValue
+    global minValue, population
     minValue = 1
-    return 0
+
+    orderAscMaxValidRestrictionsAndDescMinValue(population)
+    minValue = fmin(population[0])
+
+    print(population[0])
+    
+    for gen in range(0, 2000):
+        crossoverPopulation(population)
+    # End for
 # End init
 
 
