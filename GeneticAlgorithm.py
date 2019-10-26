@@ -9,12 +9,15 @@ The best are going to be those who matches more validations, and which fmin is t
 Crossover is going to be between 10 invidiuals, over 70%, done on one point
 and they cross 1st with 2nd, 3rd with 4th, and so on...
 
-Mutation is going to be over 80%. They can mutate any value greather than 0. 
+Mutation is going to be over 80%. They can mutate  the first 2 genotypes, or the other 4. 
+Each group altogether must be mutated in order to keep the following conditions:
+a) The sum of the first 2 genotypes must lesser or equal than 1000
+b) The sum of the other 4 genotypes must lesser or equal than 2000
 
-Punishment if any individual doesn't fit:
-a) The sum of the first 2 genotypes must be lesser or equal than 1000
-b) The sum of the other 4 genotypes must be lesser or equal than 2000
+Mutation will ensure this values are kept after crossover anyway.
 
+Punishment happens if there is any negative value in the invidividual or 
+any any invividual under bestCountValidations
 '''
 population = [
     [44, 956, 126, 164, 263, 1447],
@@ -39,19 +42,18 @@ population = [
     [17, 983, 153, 333, 159, 1355],
 ]
 
-
 '''
 FUNCTIONS AND RESTRICTIONS
 '''
 
 def multiplyAndSumVarsForCoefs(vars, coefs):
-    r = 0
+    total = 0
 
     for i in range(0, len(coefs)):
-        r += coefs[i] * vars[i]
+        total += coefs[i] * vars[i]
     # End for
 
-    return r
+    return total
 # End f
 
 def fmin(idv):
@@ -73,6 +75,7 @@ def countValidRestrictions(idv):
     totalValid += 0 | validateRestriction(idv, [0, 2, 0, 0, 3, 3], operator.le, 8800) # Dpto E2
     totalValid += 0 | validateRestriction(idv, [0, 0, 6, 0, 6, 0], operator.le, 8800) # Dpto F1
     totalValid += 0 | validateRestriction(idv, [4, 4, 0, 4, 0, 4], operator.le, 8800) # Dpto F2
+    
     totalValid += 0 | validateRestriction(idv, [0.1, 0.1, 0.5, 0.5, 0.5, 0.5], operator.le, 2400) # Dpto F2
     totalValid += 0 | validateRestriction(idv, [0, 0, 1, 1, 1, 1], operator.eq, 2000) # Dpto F2
     totalValid += 0 | validateRestriction(idv, [1, 1, 0, 0, 0, 0], operator.eq, 1000) # Dpto F2
@@ -86,45 +89,49 @@ def countValidRestrictions(idv):
 GENETIC ALGORITHM
 '''
 
-minValue = 0
-
+bestValue = 0
+bestCountValidations = 0
+bestAllTime = None
 
 def orderAscMaxValidRestrictionsAndDescMinValue(population):
     sortCriteria = lambda idv:(countValidRestrictions(idv), -fmin(idv))
     population.sort(key = sortCriteria, reverse = True)
 # End orderByMinValueAndMaxValidRestrictions
 
+FIRST_PART_GENOTYPE_ALLOWED = 1000
+SECOND_PART_GENOTYPE_ALLOWED = 2000
 
+MUTATION_THRESHOLD = 0.8
 CROSSOVER_THRESHOLD = 0.7
 SAMPLE_SIZE = 10 # This must be pair
-def crossoverPopulation(population):
+def getPopulationForNewGeneration(population):
     newPop = []
 
-    sample = population[0:SAMPLE_SIZE]
-    
+    sample = population[:SAMPLE_SIZE]
     for i in range(0, SAMPLE_SIZE // 2):
         kids = crossoverIndividuals(sample[i*2], sample[(i+1)*2 - 1])
 
         if len(kids) > 0: # Proceed with mutation
-            print(kids)
+            kids = mutateIndividuals(kids)
+            newPop += punishIndividuals(kids)
         # End if
-
     # End for
 
-    return newPop + population[SAMPLE_SIZE:]
+    return newPop + population[len(newPop):]
 # End crossoverPopulation
 
 def crossoverIndividuals(dad, mom):
 
-    lenIdv = len(dad)
+    lenParent = len(dad)
     idx = 1
-    while idx < lenIdv:
-        if (random.random() >= CROSSOVER_THRESHOLD): break
+    while idx < lenParent:
+        rdm = random.random()
+        if (rdm >= CROSSOVER_THRESHOLD): break
         idx += 1
     # End while
 
     newIdvs = []
-    if (idx < lenIdv): # crossover happens
+    if (idx < lenParent): # crossover happens
         first = dad[0:idx] + mom[idx:]
         second = mom[0:idx] + dad[idx:]
         newIdvs = [first, second]
@@ -133,21 +140,108 @@ def crossoverIndividuals(dad, mom):
     return newIdvs
 # End crossoverIndividuals
 
+def mutateIndividuals(idvs):
+    for idv in idvs:
+
+        lenIdv = len(idv)
+        idx = 0
+        while idx < lenIdv:
+            rdm = random.random()
+            if (rdm >= MUTATION_THRESHOLD): break
+            idx += 1
+        # End while
+
+        if (idx < lenIdv): mutateIndividualAtIdx(idv, idx)
+        ensureMinimunConditionsAreReached(idv)
+    # End for
+
+    return idvs
+# End mutateIndividuals
+
+def mutateIndividualAtIdx(idv, idx):
+    tot = comparableValue = 0
+
+    if (idx < 2):
+        tot = sum(idv[:2])
+        comparableValue != FIRST_PART_GENOTYPE_ALLOWED
+    else:
+        tot = sum(idv[2:])
+        comparableValue != SECOND_PART_GENOTYPE_ALLOWED
+    # End if
+
+    if tot > comparableValue:
+        idv[idx] -= tot - comparableValue
+    # End if
+
+    return idv
+# End mutateIndividualAtIdx
+
+def ensureMinimunConditionsAreReached(idv):
+    opt = list(idv)
+    if sum(idv[:2]) != FIRST_PART_GENOTYPE_ALLOWED: 
+        mutateToKeepSumFromTo(idv, FIRST_PART_GENOTYPE_ALLOWED, 0, 1)
+    # End if
+
+    if sum(idv[2:]) != SECOND_PART_GENOTYPE_ALLOWED: 
+        mutateToKeepSumFromTo(idv, SECOND_PART_GENOTYPE_ALLOWED, 2, 5)
+    # End if
+
+    return idv
+# End ensureMinimunConditionsAreReached
+
+
+def mutateToKeepSumFromTo(idv, tot, start, end):
+    for i in range(start, end):
+        rdm = random.randint(0, tot)
+        idv[i] = rdm
+        tot -= rdm
+    # End for
+
+    idv[end] = tot
+    return idv
+# End mutateToKeepSumFromTo
+
+
+def punishIndividuals(idvs):
+    validIdvs = []
+
+    for idv in idvs:
+        filtered = list(filter(lambda g: g < 0, idv))
+        if (len(filtered) == 0): validIdvs.append(idv)
+    # End for
+
+    return validIdvs
+# End punishIndividuals
+
 def init():
-    global minValue, population
-    minValue = 1
+    global bestValue, bestCountValidations, bestAllTime, population
 
     orderAscMaxValidRestrictionsAndDescMinValue(population)
-    minValue = fmin(population[0])
 
-    print(population[0])
-    
-    for gen in range(0, 2000):
-        crossoverPopulation(population)
+    bestAllTime = population[0]
+    bestValue = fmin(bestAllTime)
+    bestCountValidations = countValidRestrictions(bestAllTime)
+
+    for gen in range(0, 20000):
+        print("Running generation:", gen)
+        population = getPopulationForNewGeneration(population)
+        orderAscMaxValidRestrictionsAndDescMinValue(population)
+        
+        bestGeneration = population[0]
+        minValue = fmin(bestGeneration)
+        counValidations = countValidRestrictions(bestGeneration)
+        print("Best result for current gen", bestGeneration, minValue, counValidations , "\n")
+
+        if (bestCountValidations <= counValidations and bestValue >= minValue):
+            bestCountValidations = counValidations
+            bestValue = minValue
+            bestAllTime = bestGeneration
+        # End if
+
     # End for
 # End init
 
 
 
 init()
-print(minValue);
+print("BEST OF ALL generarions for current gen", bestAllTime, bestValue, bestCountValidations, "\n")
